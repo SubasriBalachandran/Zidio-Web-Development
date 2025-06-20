@@ -1,4 +1,3 @@
-// controllers/historyController.js
 const Upload = require("../models/upload");
 
 const getHistory = async (req, res) => {

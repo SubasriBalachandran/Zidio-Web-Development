@@ -2,7 +2,7 @@ const express = require("express");
 const multer = require("multer");
 const xlsx = require("xlsx");
 const ExcelData = require("../models/ExcelData");
-const auth = require("../middleware/auth"); // ⬅️ add this
+const auth = require("../middleware/auth");
 
 const router = express.Router();
 const storage = multer.memoryStorage();
@@ -38,7 +38,7 @@ router.post("/excel", auth, upload.any(), async (req, res) => {
 
     const savedData = new ExcelData({
       data: jsonData,
-      user: req.user._id, // ⬅️ associate with the user
+      user: req.user._id, 
       uploadedAt: new Date(),
     });
 
