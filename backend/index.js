@@ -7,18 +7,12 @@ const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Connect to MongoDB
 mongoose.connect(process.env.MONGO_URI)
   .then(() => console.log("MongoDB connected"))
-  .catch(err => console.log(err));
+  .catch(err => console.log("DB error:", err));
 
-// Routes
-const authRoutes = require("./routes/authRoutes");
-app.use("/api/auth", authRoutes);
-const uploadRoutes = require("./routes/uploadRoutes");
-app.use("/api/upload", uploadRoutes);
-const analysisRoutes = require("./routes/analysisRoutes");
-app.use("/api/analysis", analysisRoutes);
+app.use("/api/auth", require("./routes/authRoutes"));
+app.use("/api/upload", require("./routes/uploadRoutes"));
 
 app.get("/", (req, res) => res.send("Backend is running"));
 

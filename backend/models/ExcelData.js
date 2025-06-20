@@ -1,9 +1,8 @@
-// models/ExcelData.js
 const mongoose = require("mongoose");
 
 const excelDataSchema = new mongoose.Schema({
   data: { type: Array, required: true },
-  uploadedAt: { type: Date, default: Date.now },
-});
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
+}, { timestamps: true });
 
 module.exports = mongoose.model("ExcelData", excelDataSchema);

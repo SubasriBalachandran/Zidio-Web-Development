@@ -1,67 +1,60 @@
+const express = require("express");
+const multer = require("multer");
 const xlsx = require("xlsx");
-const fs = require("fs");
-const crypto = require("crypto");
-const Upload = require("../models/upload");
+const ExcelData = require("../models/ExcelData");
+const auth = require("../middleware/auth"); // ⬅️ add this
 
-const handleExcelUpload = async (req, res) => {
+const router = express.Router();
+const storage = multer.memoryStorage();
+const upload = multer({ storage: storage });
+
+// Upload & Store Excel Data
+router.post("/excel", auth, upload.any(), async (req, res) => {
   try {
-    if (!req.file) {
+    if (!req.files || req.files.length === 0) {
       return res.status(400).json({ message: "No file uploaded" });
     }
 
-    const filePath = req.file.path;
+    const file = req.files[0];
 
-    // ✅ Read and hash the file content
-    const fileBuffer = fs.readFileSync(filePath);
-    const contentHash = crypto.createHash("sha256").update(fileBuffer).digest("hex");
-
-    // ✅ Check for duplicates using the content hash
-    const existing = await Upload.findOne({ contentHash });
-    if (existing) {
-      fs.unlinkSync(filePath); // cleanup temp file
-      return res.status(200).json({
-        message: "File already uploaded",
-        summary: existing.summary,
-        rows: existing.rows,         // ✅ Return previously stored rows
-        duplicate: true,
-      });
+    if (!file.originalname.match(/\.(xls|xlsx)$/)) {
+      return res.status(400).json({ message: "Only Excel files are allowed" });
     }
 
-    // ✅ Parse the Excel file
-    const workbook = xlsx.read(fileBuffer);
+    const workbook = xlsx.read(file.buffer, { type: "buffer" });
     const sheetName = workbook.SheetNames[0];
-    const data = xlsx.utils.sheet_to_json(workbook.Sheets[sheetName]);
+    const sheet = workbook.Sheets[sheetName];
 
-    // ✅ Create a summary
+    const jsonData = xlsx.utils.sheet_to_json(sheet);
+
+    if (jsonData.length === 0) {
+      return res.status(400).json({ message: "Excel file is empty" });
+    }
+
     const summary = {
-      totalRows: data.length,
-      columns: Object.keys(data[0] || {}),
+      totalRows: jsonData.length,
+      columns: Object.keys(jsonData[0] || {}),
     };
 
-    // ✅ Save upload to MongoDB including rows
-    await Upload.create({
-      fileName: req.file.originalname,
-      contentHash,
-      summary,
-      rows: data,                     // ✅ Save full row data
+    const savedData = new ExcelData({
+      data: jsonData,
+      user: req.user._id, // ⬅️ associate with the user
+      uploadedAt: new Date(),
     });
 
-    fs.unlinkSync(filePath); // delete temp file
+    await savedData.save();
 
-    // ✅ Respond to client with summary and rows
-    return res.status(200).json({
-      message: "File uploaded and processed",
+    res.status(200).json({
+      message: "Excel file uploaded and data saved to MongoDB successfully",
       summary,
-      rows: data,
-      duplicate: false,
+      data: jsonData,
+      columns: summary.columns,
     });
+
   } catch (error) {
-    console.error("Error processing Excel:", error);
-    return res.status(500).json({
-      message: "Server error",
-      error: error.message,
-    });
+    console.error("Upload error:", error);
+    res.status(500).json({ message: "Server error", error: error.message });
   }
-};
+});
 
-module.exports = { handleExcelUpload };
+module.exports = router;

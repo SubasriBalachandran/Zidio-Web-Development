@@ -5,7 +5,7 @@ const router = express.Router();
 
 router.get("/summary", async (req, res) => {
   try {
-    const latest = await ExcelData.findOne().sort({ createdAt: -1 });
+    const latest = await ExcelData.findOne().sort({ uploadedAt: -1 }); // 🔁 safer if you're not using timestamps
 
     if (!latest) {
       return res.status(404).json({ message: "No Excel data found" });
@@ -23,6 +23,7 @@ router.get("/summary", async (req, res) => {
     res.json({
       summary: {
         totalRows,
+        columns,
         columnStats,
       },
     });
